@@ -12,6 +12,11 @@ import numpy as np
 
 
 def main():
+    """
+    x .. 入力特徴量
+    y .. 教師ラベル(0/1)
+    LSTM に通さず，フレーム毎に独立に推定するので，バッチサイズは1じゃなくて良い
+    """
     df_list = setup()
 
     df = pd.concat(df_list[:90])

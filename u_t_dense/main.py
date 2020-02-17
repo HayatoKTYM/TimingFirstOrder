@@ -13,8 +13,13 @@ import numpy as np
 from torch.utils import data
 
 def main():
+    """
+    x .. 入力特徴量
+    y .. 教師ラベル(0 or 1)
+    stateful(状態を常に保持)なので，バッチサイズは1としている
+    """
     df_list = setup()
-
+    
     df = pd.concat(df_list[:90])
     x = df.iloc[:,-128:-64].values
     print(x.shape)
@@ -53,7 +58,7 @@ def main():
     dataloaders_dict = {"train": train_dataloader, "val": test_dataloader, "test": test_dataloader}
     
     train(net=net, dataloaders_dict=dataloaders_dict, criterion=criterion,optimizer=optimizer,
-        num_epochs=30, output='./dense_model/', resume=True)
+        num_epochs=1, output='./dense_model/', resume=True)
 
 if __name__ == '__main__':
     main()
