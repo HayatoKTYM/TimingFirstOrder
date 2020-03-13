@@ -10,14 +10,21 @@ class FirstDelayActionPredict_ut_model(nn.Module):
     a(t),u(t) から 1次遅れ系のstep応答を計算し， 行動生成らしさ y(t) を計算
     u_t は予測値を与える(0 ~ 1 の連続値)
     """
-    def __init__(self, num_layers = 1, input_size=128, hidden_size = 64, PATH='../../u_t_dense/dense_model/epoch_29_ut_train.pth'):
+    def __init__(self, num_layers = 1, input_size=128, hidden_size = 64, PATH='../../u_t_dense/dense_model/epoch_29_ut_train.pth',lstm_model=False):
         super(FirstDelayActionPredict_ut_model, self).__init__()
 
-        import sys
-        sys.path.append('../..')
-        from u_t_dense.model import U_t_train 
-        self.u_t_model = U_t_train()
-        self.u_t_model.load_state_dict(torch.load(PATH,map_location='cpu'))
+        if not lstm_model:
+            import sys
+            sys.path.append('../../')
+            from u_t_dense.model import U_t_train 
+            self.u_t_model = U_t_train()
+            self.u_t_model.load_state_dict(torch.load(PATH,map_location='cpu'))
+        else:
+            import sys
+            sys.path.append('../../')
+            from u_t_each.model import TimeActionPredict
+            self.u_t_model = TimeActionPredict()
+            self.u_t_model.load_state_dict(torch.load(PATH,map_location='cpu'))
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print('using',device)
@@ -40,18 +47,28 @@ class FirstDelayActionPredict_ut_model(nn.Module):
         self.hidden_size = hidden_size
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.count = 0
+        self.h_a = None
+        self.h_b = None
 
     def forward(self, x, hidden=None,  y_pre=0,a_pre=0):
         assert len(x.shape) == 2 , print('data shape is incorrect.')
-        u_a = F.softmax(self.u_t_model(x[:,:64]))[:,1]
-        u_b = F.softmax(self.u_t_model(x[:,64:]))[:,1]
+        u_a,self.h_a = self.u_t_model(x[:,-128:-64],self.h_a)
+        u_b,self.h_b = self.u_t_model(x[:,-64:],self.h_b)
+        #self.h_a = self.h_a.detach()
+        #self.h_b = self.h_b.detach()
+
+        u_a = F.softmax(u_a)[:,1]
+        u_b = F.softmax(u_b)[:,1]
+        
         u = torch.min(torch.cat((u_a,u_b),dim=-1))
+        #u = torch.clamp(u,min=0.0,max=0.8)
+        #u /= 0.8
         
         x = self.dr1(self.relu1(self.fc1(x)))
         x = x.view(1, 1, -1)
         if hidden is None:
             hidden = self.reset_state()
-            print('reset state!!')
+            #print('reset state!!')
         
         h, hidden = self.lstm(x, hidden)        
         a = F.sigmoid(self.fc3(h[:,-1,:]))
@@ -61,6 +78,8 @@ class FirstDelayActionPredict_ut_model(nn.Module):
             print("u:{}, a:{}".format(u,a))
         self.count  += 1
         y1 = a * u + (1-a) * y_pre
+        #if u < 0.5:
+        #    y1 -= y1
         return y1, hidden, a, u
 
     def reset_state(self):

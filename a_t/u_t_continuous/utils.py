@@ -33,6 +33,10 @@ def setup() -> list:
         turn = np_to_dataframe(spec_middle_feature_files[i])
         # df + img + turn を 列方向に連結
         df = pd.concat([df,img,turn],axis=1)
+        
+        reset_array = [-1] * len(df.columns)
+        df.loc['reset'] = reset_array   
+        
         df_list.append(df)
 
     return df_list

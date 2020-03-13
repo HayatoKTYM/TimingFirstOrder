@@ -37,14 +37,14 @@ class FirstDelayActionPredict_VAD(nn.Module):
         x = x.view(1, 1, -1)
         if hidden is None:
             hidden = self.reset_state()
-            print('reset state!!')
+            #print('reset state!!')
 
         h, hidden = self.lstm(x, hidden)
         a = F.sigmoid(self.fc3(h[:,-1,:]))
         a = u * a_pre + (1-u) * a 
-        
         y1 = a * u + (1-a) * y_pre
-
+        if u <= 0.0:
+            y1 -= y1
             
         """
         if flag:
@@ -56,11 +56,11 @@ class FirstDelayActionPredict_VAD(nn.Module):
             self.count  += 1
             y1 = a * u + (1-a) * y_pre
         """
-        if self.count % 50000 == 0:
-            print("u:{}, a:{}".format(u,a))
+        #if self.count % 50000 == 0:
+        #    print("u:{}, a:{}, y:{}".format(u,a,y1))
         self.count  += 1
             
-        
+        #print('y1:{}'.format(y1))
         return y1, hidden, a
 
     def reset_state(self):
